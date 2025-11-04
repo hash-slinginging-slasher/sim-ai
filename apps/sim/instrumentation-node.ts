@@ -114,4 +114,15 @@ async function initializeOpenTelemetry() {
 
 export async function register() {
   await initializeOpenTelemetry()
+
+  // Start internal polling service for schedules and webhooks
+  if (process.env.NODE_ENV === 'production' || process.env.ENABLE_POLLING === 'true') {
+    try {
+      const { internalPoller } = await import('./lib/polling/internal-poller')
+      internalPoller.start()
+      logger.info('Internal polling service registered')
+    } catch (error) {
+      logger.error('Failed to start internal polling service', error)
+    }
+  }
 }
