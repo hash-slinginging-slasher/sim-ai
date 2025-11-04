@@ -113,16 +113,28 @@ async function initializeOpenTelemetry() {
 }
 
 export async function register() {
+  console.log('[OTelInstrumentation] register() starting...')
+  console.log('[OTelInstrumentation] NODE_ENV:', process.env.NODE_ENV)
+  console.log('[OTelInstrumentation] ENABLE_POLLING:', process.env.ENABLE_POLLING)
+
   await initializeOpenTelemetry()
 
   // Start internal polling service for schedules and webhooks
+  console.log('[OTelInstrumentation] Checking if should start polling...')
   if (process.env.NODE_ENV === 'production' || process.env.ENABLE_POLLING === 'true') {
+    console.log('[OTelInstrumentation] Condition met, importing internal-poller...')
     try {
       const { internalPoller } = await import('./lib/polling/internal-poller')
+      console.log('[OTelInstrumentation] internal-poller imported, calling start()...')
       internalPoller.start()
+      console.log('[OTelInstrumentation] Internal polling service registered')
       logger.info('Internal polling service registered')
     } catch (error) {
+      console.error('[OTelInstrumentation] Failed to start internal polling service:', error)
       logger.error('Failed to start internal polling service', error)
     }
+  } else {
+    console.log('[OTelInstrumentation] Polling not enabled (not production and ENABLE_POLLING not true)')
   }
+  console.log('[OTelInstrumentation] register() completed')
 }

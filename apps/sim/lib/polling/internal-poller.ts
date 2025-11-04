@@ -19,11 +19,14 @@ class InternalPoller {
    * Start the internal polling service
    */
   start() {
+    console.log('[InternalPoller] start() called')
     if (this.isRunning) {
+      console.log('[InternalPoller] Already running, skipping')
       logger.warn('Internal poller already running')
       return
     }
 
+    console.log('[InternalPoller] Starting internal polling service...')
     logger.info('Starting internal polling service...')
     this.isRunning = true
 
@@ -41,9 +44,11 @@ class InternalPoller {
     setTimeout(() => this.pollSchedules(), 5000) // After 5 seconds
     setTimeout(() => this.pollOutlook(), 10000) // After 10 seconds
 
+    console.log('[InternalPoller] Service started successfully')
     logger.info('Internal polling service started successfully')
     logger.info('- Schedule polling: every 60 seconds')
     logger.info('- Outlook polling: every 60 seconds')
+    console.log('[InternalPoller] Timers set: schedules in 5s, outlook in 10s')
   }
 
   /**
