@@ -79,6 +79,7 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizeCss: true,
     turbopackSourceMaps: false,
+    instrumentationHook: true,
   },
   ...(isDev && {
     allowedDevOrigins: [
