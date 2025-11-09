@@ -173,6 +173,12 @@ export const auth = betterAuth({
         'https://www.googleapis.com/auth/userinfo.profile',
       ],
     },
+    microsoft: {
+      clientId: env.MICROSOFT_CLIENT_ID as string,
+      clientSecret: env.MICROSOFT_CLIENT_SECRET as string,
+      tenantId: env.MICROSOFT_TENANT_ID,
+      scopes: ['openid', 'profile', 'email', 'User.Read'],
+    },
   },
   emailAndPassword: {
     enabled: true,
@@ -309,7 +315,14 @@ export const auth = betterAuth({
       expiresIn: 15 * 60, // 15 minutes in seconds
     }),
     genericOAuth({
-      config: [
+      config: (() => {
+        // Use tenant-specific URLs for Microsoft OAuth when MICROSOFT_TENANT_ID is provided
+        // Otherwise fall back to /common/ for multi-tenant support
+        const msftTenant = env.MICROSOFT_TENANT_ID || 'common'
+        const msftAuthUrl = `https://login.microsoftonline.com/${msftTenant}/oauth2/v2.0/authorize`
+        const msftTokenUrl = `https://login.microsoftonline.com/${msftTenant}/oauth2/v2.0/token`
+
+        return [
         {
           providerId: 'github-repo',
           clientId: env.GITHUB_REPO_CLIENT_ID as string,
@@ -498,8 +511,8 @@ export const auth = betterAuth({
           providerId: 'microsoft-teams',
           clientId: env.MICROSOFT_CLIENT_ID as string,
           clientSecret: env.MICROSOFT_CLIENT_SECRET as string,
-          authorizationUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
-          tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+          authorizationUrl: msftAuthUrl,
+          tokenUrl: msftTokenUrl,
           userInfoUrl: 'https://graph.microsoft.com/v1.0/me',
           scopes: [
             'openid',
@@ -522,14 +535,55 @@ export const auth = betterAuth({
           authentication: 'basic',
           pkce: true,
           redirectURI: `${getBaseUrl()}/api/auth/oauth2/callback/microsoft-teams`,
+          getUserInfo: async (tokens) => {
+            try {
+              const response = await fetch('https://graph.microsoft.com/v1.0/me', {
+                headers: {
+                  Authorization: `Bearer ${tokens.accessToken}`,
+                },
+              })
+
+              if (!response.ok) {
+                logger.error('Failed to fetch Microsoft user profile', {
+                  status: response.status,
+                  statusText: response.statusText,
+                })
+                throw new Error(`Failed to fetch Microsoft profile: ${response.statusText}`)
+              }
+
+              const profile = await response.json()
+              const now = new Date()
+
+              // Microsoft Graph returns: mail, userPrincipalName, displayName
+              // Use mail if available, otherwise userPrincipalName
+              const email = profile.mail || profile.userPrincipalName
+
+              if (!email) {
+                logger.error('No email found in Microsoft profile', { profile })
+                throw new Error('Email is required but not found in Microsoft profile')
+              }
+
+              return {
+                id: profile.id,
+                name: profile.displayName || profile.givenName || 'Microsoft User',
+                email: email,
+                emailVerified: true,
+                createdAt: now,
+                updatedAt: now,
+              }
+            } catch (error) {
+              logger.error('Error in Microsoft getUserInfo', { error })
+              throw error
+            }
+          },
         },
 
         {
           providerId: 'microsoft-excel',
           clientId: env.MICROSOFT_CLIENT_ID as string,
           clientSecret: env.MICROSOFT_CLIENT_SECRET as string,
-          authorizationUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
-          tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+          authorizationUrl: msftAuthUrl,
+          tokenUrl: msftTokenUrl,
           userInfoUrl: 'https://graph.microsoft.com/v1.0/me',
           scopes: ['openid', 'profile', 'email', 'Files.Read', 'Files.ReadWrite', 'offline_access'],
           responseType: 'code',
@@ -542,8 +596,8 @@ export const auth = betterAuth({
           providerId: 'microsoft-planner',
           clientId: env.MICROSOFT_CLIENT_ID as string,
           clientSecret: env.MICROSOFT_CLIENT_SECRET as string,
-          authorizationUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
-          tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+          authorizationUrl: msftAuthUrl,
+          tokenUrl: msftTokenUrl,
           userInfoUrl: 'https://graph.microsoft.com/v1.0/me',
           scopes: [
             'openid',
@@ -563,10 +617,14 @@ export const auth = betterAuth({
 
         {
           providerId: 'outlook',
-          clientId: env.MICROSOFT_CLIENT_ID as string,
-          clientSecret: env.MICROSOFT_CLIENT_SECRET as string,
-          authorizationUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
-          tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+          clientId: (env.OUTLOOK_CLIENT_ID || env.MICROSOFT_CLIENT_ID) as string,
+          clientSecret: (env.OUTLOOK_CLIENT_SECRET || env.MICROSOFT_CLIENT_SECRET) as string,
+          authorizationUrl: env.OUTLOOK_TENANT_ID
+            ? `https://login.microsoftonline.com/${env.OUTLOOK_TENANT_ID}/oauth2/v2.0/authorize`
+            : msftAuthUrl,
+          tokenUrl: env.OUTLOOK_TENANT_ID
+            ? `https://login.microsoftonline.com/${env.OUTLOOK_TENANT_ID}/oauth2/v2.0/token`
+            : msftTokenUrl,
           userInfoUrl: 'https://graph.microsoft.com/v1.0/me',
           scopes: [
             'openid',
@@ -589,8 +647,8 @@ export const auth = betterAuth({
           providerId: 'onedrive',
           clientId: env.MICROSOFT_CLIENT_ID as string,
           clientSecret: env.MICROSOFT_CLIENT_SECRET as string,
-          authorizationUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
-          tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+          authorizationUrl: msftAuthUrl,
+          tokenUrl: msftTokenUrl,
           userInfoUrl: 'https://graph.microsoft.com/v1.0/me',
           scopes: ['openid', 'profile', 'email', 'Files.Read', 'Files.ReadWrite', 'offline_access'],
           responseType: 'code',
@@ -604,8 +662,8 @@ export const auth = betterAuth({
           providerId: 'sharepoint',
           clientId: env.MICROSOFT_CLIENT_ID as string,
           clientSecret: env.MICROSOFT_CLIENT_SECRET as string,
-          authorizationUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
-          tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+          authorizationUrl: msftAuthUrl,
+          tokenUrl: msftTokenUrl,
           userInfoUrl: 'https://graph.microsoft.com/v1.0/me',
           scopes: [
             'openid',
@@ -1268,7 +1326,8 @@ export const auth = betterAuth({
             }
           },
         },
-      ],
+      ]
+      })(), // Close the IIFE
     }),
     // Include SSO plugin when enabled
     ...(env.SSO_ENABLED ? [sso()] : []),

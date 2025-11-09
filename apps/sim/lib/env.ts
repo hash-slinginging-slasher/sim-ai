@@ -191,6 +191,10 @@ export const env = createEnv({
     DISCORD_CLIENT_SECRET:                 z.string().optional(),                  // Discord OAuth client secret
     MICROSOFT_CLIENT_ID:                   z.string().optional(),                  // Microsoft OAuth client ID for Office 365/Teams
     MICROSOFT_CLIENT_SECRET:               z.string().optional(),                  // Microsoft OAuth client secret
+    MICROSOFT_TENANT_ID:                   z.string().optional(),                  // Microsoft tenant ID for single-tenant apps (use for /tenantId/ instead of /common/)
+    OUTLOOK_CLIENT_ID:                     z.string().optional(),                  // Outlook-specific OAuth client ID (falls back to MICROSOFT_CLIENT_ID if not set)
+    OUTLOOK_CLIENT_SECRET:                 z.string().optional(),                  // Outlook-specific OAuth client secret (falls back to MICROSOFT_CLIENT_SECRET if not set)
+    OUTLOOK_TENANT_ID:                     z.string().optional(),                  // Outlook-specific tenant ID (falls back to MICROSOFT_TENANT_ID if not set)
     HUBSPOT_CLIENT_ID:                     z.string().optional(),                  // HubSpot OAuth client ID
     HUBSPOT_CLIENT_SECRET:                 z.string().optional(),                  // HubSpot OAuth client secret
     WEALTHBOX_CLIENT_ID:                   z.string().optional(),                  // WealthBox OAuth client ID
